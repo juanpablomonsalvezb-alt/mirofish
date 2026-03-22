@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: mirofish-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    envVars:
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://api.openai.com/v1
+      - key: LLM_MODEL_NAME
+        value: gpt-4o-mini
+      - key: ZEP_API_KEY
+        sync: false
+      - key: FLASK_HOST
+        value: 0.0.0.0
+      - key: FLASK_PORT
+        value: 5001
+      - key: FLASK_DEBUG
+        value: "False"
+    plan: free
