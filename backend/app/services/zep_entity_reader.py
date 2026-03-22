@@ -7,7 +7,10 @@ import time
 from typing import Dict, Any, List, Optional, Set, Callable, TypeVar
 from dataclasses import dataclass, field
 
-from zep_cloud.client import Zep
+try:
+    from zep_cloud.client import Zep
+except ImportError:
+    Zep = None
 
 from ..config import Config
 from ..utils.logger import get_logger
@@ -80,10 +83,11 @@ class ZepEntityReader:
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or Config.ZEP_API_KEY
-        if not self.api_key:
-            raise ValueError("ZEP_API_KEY 未配置")
-        
-        self.client = Zep(api_key=self.api_key)
+        self.client = None
+        if self.api_key and Zep is not None:
+            self.client = Zep(api_key=self.api_key)
+        elif not self.api_key:
+            logger.warning("ZEP_API_KEY 未配置 — ZepEntityReader will return empty results")
     
     def _call_with_retry(
         self, 
@@ -134,6 +138,9 @@ class ZepEntityReader:
         Returns:
             节点列表
         """
+        if self.client is None:
+            logger.warning("Zep client not available — returning empty nodes")
+            return []
         logger.info(f"获取图谱 {graph_id} 的所有节点...")
 
         nodes = fetch_all_nodes(self.client, graph_id)
@@ -161,6 +168,9 @@ class ZepEntityReader:
         Returns:
             边列表
         """
+        if self.client is None:
+            logger.warning("Zep client not available — returning empty edges")
+            return []
         logger.info(f"获取图谱 {graph_id} 的所有边...")
 
         edges = fetch_all_edges(self.client, graph_id)
@@ -182,13 +192,15 @@ class ZepEntityReader:
     def get_node_edges(self, node_uuid: str) -> List[Dict[str, Any]]:
         """
         获取指定节点的所有相关边（带重试机制）
-        
+
         Args:
             node_uuid: 节点UUID
-            
+
         Returns:
             边列表
         """
+        if self.client is None:
+            return []
         try:
             # 使用重试机制调用Zep API
             edges = self._call_with_retry(
@@ -345,6 +357,8 @@ class ZepEntityReader:
         Returns:
             EntityNode或None
         """
+        if self.client is None:
+            return None
         try:
             # 使用重试机制获取节点
             node = self._call_with_retry(

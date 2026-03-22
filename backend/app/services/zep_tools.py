@@ -13,7 +13,10 @@ import json
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 
-from zep_cloud.client import Zep
+try:
+    from zep_cloud.client import Zep
+except ImportError:
+    Zep = None
 
 from ..config import Config
 from ..utils.logger import get_logger
@@ -423,10 +426,11 @@ class ZepToolsService:
     
     def __init__(self, api_key: Optional[str] = None, llm_client: Optional[LLMClient] = None):
         self.api_key = api_key or Config.ZEP_API_KEY
-        if not self.api_key:
-            raise ValueError("ZEP_API_KEY 未配置")
-        
-        self.client = Zep(api_key=self.api_key)
+        self.client = None
+        if self.api_key and Zep is not None:
+            self.client = Zep(api_key=self.api_key)
+        else:
+            logger.warning("ZEP_API_KEY 未配置 — ZepToolsService will return empty results")
         # LLM客户端用于InsightForge生成子问题
         self._llm_client = llm_client
         logger.info("ZepToolsService 初始化完成")
@@ -484,7 +488,11 @@ class ZepToolsService:
             SearchResult: 搜索结果
         """
         logger.info(f"图谱搜索: graph_id={graph_id}, query={query[:50]}...")
-        
+
+        if self.client is None:
+            logger.warning("Zep client not available — returning empty search results")
+            return SearchResult(facts=[], edges=[], nodes=[], query=query, total_count=0)
+
         # 尝试使用Zep Cloud Search API
         try:
             search_results = self._call_with_retry(
@@ -657,6 +665,8 @@ class ZepToolsService:
         Returns:
             节点列表
         """
+        if self.client is None:
+            return []
         logger.info(f"获取图谱 {graph_id} 的所有节点...")
 
         nodes = fetch_all_nodes(self.client, graph_id)
@@ -686,6 +696,8 @@ class ZepToolsService:
         Returns:
             边列表（包含created_at, valid_at, invalid_at, expired_at）
         """
+        if self.client is None:
+            return []
         logger.info(f"获取图谱 {graph_id} 的所有边...")
 
         edges = fetch_all_edges(self.client, graph_id)
@@ -716,13 +728,15 @@ class ZepToolsService:
     def get_node_detail(self, node_uuid: str) -> Optional[NodeInfo]:
         """
         获取单个节点的详细信息
-        
+
         Args:
             node_uuid: 节点UUID
-            
+
         Returns:
             节点信息或None
         """
+        if self.client is None:
+            return None
         logger.info(f"获取节点详情: {node_uuid[:8]}...")
         
         try:

@@ -283,15 +283,12 @@ def build_graph():
         logger.info("=== 开始构建图谱 ===")
         
         # 检查配置
-        errors = []
         if not Config.ZEP_API_KEY:
-            errors.append("ZEP_API_KEY未配置")
-        if errors:
-            logger.error(f"配置错误: {errors}")
+            logger.warning("Graph build requested but ZEP_API_KEY is not configured")
             return jsonify({
                 "success": False,
-                "error": "配置错误: " + "; ".join(errors)
-            }), 500
+                "error": "Graph building requires ZEP_API_KEY. Please set ZEP_API_KEY in your .env file."
+            }), 400
         
         # 解析请求
         data = request.get_json() or {}
@@ -569,13 +566,14 @@ def get_graph_data(graph_id: str):
     try:
         if not Config.ZEP_API_KEY:
             return jsonify({
-                "success": False,
-                "error": "ZEP_API_KEY未配置"
-            }), 500
-        
+                "success": True,
+                "data": {"nodes": [], "edges": [], "node_count": 0, "edge_count": 0},
+                "warning": "ZEP_API_KEY not configured — returning empty graph data"
+            })
+
         builder = GraphBuilderService(api_key=Config.ZEP_API_KEY)
         graph_data = builder.get_graph_data(graph_id)
-        
+
         return jsonify({
             "success": True,
             "data": graph_data
@@ -598,9 +596,9 @@ def delete_graph(graph_id: str):
         if not Config.ZEP_API_KEY:
             return jsonify({
                 "success": False,
-                "error": "ZEP_API_KEY未配置"
-            }), 500
-        
+                "error": "Graph deletion requires ZEP_API_KEY. Please set ZEP_API_KEY in your .env file."
+            }), 400
+
         builder = GraphBuilderService(api_key=Config.ZEP_API_KEY)
         builder.delete_graph(graph_id)
         

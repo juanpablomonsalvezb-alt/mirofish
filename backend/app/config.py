@@ -69,7 +69,11 @@ class Config:
         errors = []
         if not cls.LLM_API_KEY:
             errors.append("LLM_API_KEY 未配置")
+        # ZEP_API_KEY is optional — Zep features degrade gracefully when absent
         if not cls.ZEP_API_KEY:
-            errors.append("ZEP_API_KEY 未配置")
+            import logging
+            logging.getLogger('mirofish.config').warning(
+                "ZEP_API_KEY 未配置 — Zep graph features will be disabled"
+            )
         return errors
 

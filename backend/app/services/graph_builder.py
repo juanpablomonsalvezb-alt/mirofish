@@ -10,8 +10,13 @@ import threading
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass
 
-from zep_cloud.client import Zep
-from zep_cloud import EpisodeData, EntityEdgeSourceTarget
+try:
+    from zep_cloud.client import Zep
+    from zep_cloud import EpisodeData, EntityEdgeSourceTarget
+except ImportError:
+    Zep = None
+    EpisodeData = None
+    EntityEdgeSourceTarget = None
 
 from ..config import Config
 from ..models.task import TaskManager, TaskStatus
@@ -46,7 +51,9 @@ class GraphBuilderService:
         self.api_key = api_key or Config.ZEP_API_KEY
         if not self.api_key:
             raise ValueError("ZEP_API_KEY 未配置")
-        
+        if Zep is None:
+            raise RuntimeError("zep-cloud package is required for graph building. Install it with: pip install zep-cloud")
+
         self.client = Zep(api_key=self.api_key)
         self.task_manager = TaskManager()
     
@@ -201,7 +208,10 @@ class GraphBuilderService:
         import warnings
         from typing import Optional
         from pydantic import Field
-        from zep_cloud.external_clients.ontology import EntityModel, EntityText, EdgeModel
+        try:
+            from zep_cloud.external_clients.ontology import EntityModel, EntityText, EdgeModel
+        except ImportError:
+            raise RuntimeError("zep-cloud package is required for graph building. Install it with: pip install zep-cloud")
         
         # 抑制 Pydantic v2 关于 Field(default=None) 的警告
         # 这是 Zep SDK 要求的用法，警告来自动态类创建，可以安全忽略

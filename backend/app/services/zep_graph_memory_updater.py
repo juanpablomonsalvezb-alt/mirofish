@@ -12,7 +12,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from queue import Queue, Empty
 
-from zep_cloud.client import Zep
+try:
+    from zep_cloud.client import Zep
+except ImportError:
+    Zep = None
 
 from ..config import Config
 from ..utils.logger import get_logger
@@ -238,11 +241,12 @@ class ZepGraphMemoryUpdater:
         """
         self.graph_id = graph_id
         self.api_key = api_key or Config.ZEP_API_KEY
-        
-        if not self.api_key:
-            raise ValueError("ZEP_API_KEY未配置")
-        
-        self.client = Zep(api_key=self.api_key)
+
+        self.client = None
+        if self.api_key and Zep is not None:
+            self.client = Zep(api_key=self.api_key)
+        else:
+            logger.warning("ZEP_API_KEY未配置 — ZepGraphMemoryUpdater will skip all operations")
         
         # 活动队列
         self._activity_queue: Queue = Queue()
@@ -397,7 +401,11 @@ class ZepGraphMemoryUpdater:
         """
         if not activities:
             return
-        
+
+        if self.client is None:
+            logger.debug("Zep client not available — skipping batch send")
+            return
+
         # 将多条活动合并为一条文本，用换行分隔
         episode_texts = [activity.to_episode_text() for activity in activities]
         combined_text = "\n".join(episode_texts)
